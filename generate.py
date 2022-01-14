@@ -27,10 +27,13 @@ for root, dirs, files in os.walk(input_, topdown=True):
 
     shutil.copy(templates + '/stylesheet.css', outroot + '/stylesheet.css')
 
+    outfiles = []
+
     for file in files:
         if file.endswith('.md'):
             basename = file[:-3]
             outfile = outroot + '/' + basename + '.html'
+            outfiles.append(basename + '.html')
             infile = root + '/' + file
 
             with open(infile, 'r') as f:
@@ -43,3 +46,17 @@ for root, dirs, files in os.walk(input_, topdown=True):
                                            content=content)
 
                 f.write(new_file)
+
+    index_html = '<ul>'
+
+    for directory in dirs:
+        index_html += '<li><a href="%s">%s</a></li>' % (directory + '/index.html', directory.replace('_', ' '))
+
+    for file in outfiles:
+        index_html += '<li><a href="%s">%s</a></li>' % (file, file.removesuffix('.html').replace('_', ' '))
+
+    index_html += '</ul>'
+
+    with open(outroot + '/index.html', 'w') as f:
+        f.write(render_template(title=outroot,
+                                content=index_html))
