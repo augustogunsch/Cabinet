@@ -1,1 +1,1 @@
-Simple file manager
+Simple file cabinet manager
