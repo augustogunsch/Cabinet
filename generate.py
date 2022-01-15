@@ -1,6 +1,7 @@
 #!python
 import os
 import shutil
+import pdfkit
 from markdown2 import markdown
 
 input_ = 'input_files'
@@ -44,13 +45,19 @@ for root, dirs, files in os.walk(input_, topdown=True):
 
             with open(outfile, 'w') as f:
                 content = markdown(content)
+                pdf = basename + '.pdf'
 
                 pretty_name = basename.replace('_', ' ')
 
                 new_file = render_template(file_template,
                                            title=pretty_name,
                                            path=outroot.replace('_', ' ') + '/' + pretty_name,
+                                           pdf=pdf,
                                            content=content)
+
+                content += '<style>body { text-align: justify; }</style>'
+
+                pdfkit.from_string(content, outroot + '/' + pdf)
 
                 f.write(new_file)
 

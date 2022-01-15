@@ -14,11 +14,27 @@ a {
 	color: #3b7fdd;
 }
 
+.button {
+	padding: .4em;
+	border-radius: 3px;
+}
+
+#pdf {
+	background-color: red;
+	color: white;
+	right: 0;
+	bottom: -.4em;
+	position: absolute;
+}
+
+header div {
+	display: block;
+	position: relative;
+}
+
 #back {
 	background-color: #3b7fdd;
 	color: black;
-	padding: .4em;
-	border-radius: 3px;
 }
 
 #path {
