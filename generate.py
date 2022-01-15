@@ -1,80 +1,105 @@
 #!python
 import os
+import re
 import shutil
 import pdfkit
 from markdown2 import markdown
 
-input_ = 'input_files'
+input_ = 'input'
+outroot = 'out'
 output = 'Files'
 templates = 'templates'
 
-
-def render_template(template, **kwargs):
-    expanded = template[:]
-
-    for var, val in kwargs.items():
-        expanded = expanded.replace('${%s}' % var, val)
-
-    return expanded
+shutil.rmtree(outroot, ignore_errors=True)
+os.mkdir(outroot)
+shutil.copy(templates + '/stylesheet.css', outroot + '/stylesheet.css')
 
 
 with open(templates + '/file.html', 'r') as template:
     file_template = template.read()
 
-with open(templates + '/dir.html', 'r') as template:
-    dir_template = template.read()
+with open(templates + '/index.html', 'r') as template:
+    index_template = template.read()
+
+
+def render_template(template, **kwargs):
+    for var, val in kwargs.items():
+        template = template.replace('${%s}' % var, val)
+
+    return template
+
+
+class File:
+    def __init__(self, root, outdir, name):
+        self.outdir = outdir
+        self.basename = name[:-3]
+        self.pdf = self.basename + '.pdf'
+        self.html = self.basename + '.html'
+        self.path = self.outdir.removeprefix(outroot + '/') + '/' + self.html
+        self.pretty_path = self.path.replace('_', ' ').removesuffix('.html')
+
+        self.root_reference = re.sub(r'.+?/', '../', outdir)
+        self.root_reference = re.sub(r'/[^\.]+$', '/', self.root_reference)
+
+        with open(root + '/' + name, 'r') as f:
+            self.content = markdown(f.read())
+
+    def expand_html(self):
+        title = self.basename.replace('_', ' ')
+
+        return render_template(file_template,
+                               title=title,
+                               path=self.pretty_path,
+                               root=self.root_reference,
+                               pdf=self.pdf,
+                               content=self.content)
+
+    def write_html(self):
+        html_content = self.expand_html()
+
+        with open(self.outdir + '/' + self.html, 'w') as f:
+            f.write(html_content)
+
+    def write_pdf(self):
+        content = self.content
+
+        # Extra style for PDF
+        content += """
+        <style>
+            body {
+                text-align: justify;
+            }
+        </style>
+        """
+
+        pdfkit.from_string(content, self.outdir + '/' + self.pdf)
+
+    def write(self):
+        self.write_html()
+        self.write_pdf()
+
+
+toc = '<ul>'
 
 for root, dirs, files in os.walk(input_, topdown=True):
-    outroot = output + root[len(input_):]
+    outdir = outroot + '/' + output + root[len(input_):]
 
-    os.makedirs(outroot, exist_ok=True)
-
-    shutil.copy(templates + '/stylesheet.css', outroot + '/stylesheet.css')
+    os.makedirs(outdir, exist_ok=True)
 
     outfiles = []
 
-    for file in files:
-        if file.endswith('.md'):
-            basename = file[:-3]
-            outfile = outroot + '/' + basename + '.html'
-            outfiles.append(basename + '.html')
-            infile = root + '/' + file
+    if len(files) or len(dirs):
+        for file in files:
+            if file.endswith('.md'):
+                f = File(root, outdir, file)
 
-            with open(infile, 'r') as f:
-                content = f.read()
+                f.write()
 
-            with open(outfile, 'w') as f:
-                content = markdown(content)
-                pdf = basename + '.pdf'
+                toc += '<li><a href="%s">%s</a></li>' % (f.path, f.pretty_path)
 
-                pretty_name = basename.replace('_', ' ')
+toc += '</ul>'
 
-                new_file = render_template(file_template,
-                                           title=pretty_name,
-                                           path=outroot.replace('_', ' ') + '/' + pretty_name,
-                                           pdf=pdf,
-                                           content=content)
 
-                content += '<style>body { text-align: justify; }</style>'
-
-                pdfkit.from_string(content, outroot + '/' + pdf)
-
-                f.write(new_file)
-
-    index_html = '<ul>'
-
-    for directory in dirs:
-        index_html += '<li><a href="%s">%s/</a></li>' % (directory + '/index.html', directory.replace('_', ' '))
-
-    for file in outfiles:
-        index_html += '<li><a href="%s">%s</a></li>' % (file, file.removesuffix('.html').replace('_', ' '))
-
-    index_html += '</ul>'
-
-    with open(outroot + '/index.html', 'w') as f:
-        pretty_outroot = outroot.replace('_', ' ')
-
-        f.write(render_template(dir_template,
-                                title=pretty_outroot,
-                                path=pretty_outroot,
-                                content=index_html))
+with open(outroot + '/index.html', 'w') as f:
+    f.write(render_template(index_template,
+                            toc=toc))
