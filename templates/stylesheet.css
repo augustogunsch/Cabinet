@@ -1,3 +1,37 @@
 body {
-	background-color: yellow
+	background-color: black;
+	color: white;
+	margin: 0;
+}
+
+header {
+	background-color: #232323;
+	padding: 1em;
+}
+
+a {
+	text-decoration: none;
+	color: #3b7fdd;
+}
+
+#back {
+	background-color: #3b7fdd;
+	color: black;
+	padding: .4em;
+	border-radius: 3px;
+}
+
+#path {
+	margin-left: 1em;
+}
+
+#cabinet {
+	margin-top: 0;
+}
+
+main {
+	margin: 2em;
+	width: 60%;
+	margin-left: 20%;
+	text-align: justify;
 }

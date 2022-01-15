@@ -3,12 +3,12 @@ import os
 import shutil
 from markdown2 import markdown
 
-input_ = 'files'
-output = 'out'
+input_ = 'input_files'
+output = 'Files'
 templates = 'templates'
 
 
-def render_template(**kwargs):
+def render_template(template, **kwargs):
     expanded = template[:]
 
     for var, val in kwargs.items():
@@ -17,8 +17,11 @@ def render_template(**kwargs):
     return expanded
 
 
-with open(templates + '/base.html', 'r') as template:
-    template = template.read()
+with open(templates + '/file.html', 'r') as template:
+    file_template = template.read()
+
+with open(templates + '/dir.html', 'r') as template:
+    dir_template = template.read()
 
 for root, dirs, files in os.walk(input_, topdown=True):
     outroot = output + root[len(input_):]
@@ -42,7 +45,11 @@ for root, dirs, files in os.walk(input_, topdown=True):
             with open(outfile, 'w') as f:
                 content = markdown(content)
 
-                new_file = render_template(title=basename,
+                pretty_name = basename.replace('_', ' ')
+
+                new_file = render_template(file_template,
+                                           title=pretty_name,
+                                           path=outroot.replace('_', ' ') + '/' + pretty_name,
                                            content=content)
 
                 f.write(new_file)
@@ -50,7 +57,7 @@ for root, dirs, files in os.walk(input_, topdown=True):
     index_html = '<ul>'
 
     for directory in dirs:
-        index_html += '<li><a href="%s">%s</a></li>' % (directory + '/index.html', directory.replace('_', ' '))
+        index_html += '<li><a href="%s">%s/</a></li>' % (directory + '/index.html', directory.replace('_', ' '))
 
     for file in outfiles:
         index_html += '<li><a href="%s">%s</a></li>' % (file, file.removesuffix('.html').replace('_', ' '))
@@ -58,5 +65,9 @@ for root, dirs, files in os.walk(input_, topdown=True):
     index_html += '</ul>'
 
     with open(outroot + '/index.html', 'w') as f:
-        f.write(render_template(title=outroot,
+        pretty_outroot = outroot.replace('_', ' ')
+
+        f.write(render_template(dir_template,
+                                title=pretty_outroot,
+                                path=pretty_outroot,
                                 content=index_html))
