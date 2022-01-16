@@ -106,7 +106,7 @@ class File:
 
             # self.content = markdowner.convert(f.read())
 
-        self.content = subprocess.check_output(['pandoc', '-f', 'latex', '-t', 'html',
+        self.content = subprocess.check_output(['pandoc', '--mathjax=templates/mathjax/es5/tex-mml-chtml.js', '-f', 'latex', '-t', 'html',
                                                 '%s/%s' % (root, name)]).decode()
 
     def expand_html(self):
