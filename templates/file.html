@@ -2,7 +2,16 @@
 <html>
 	<head>
 		<meta charset="utf-8"/>
+		<link rel="stylesheet" href="${root}highlight.css"/>
 		<link rel="stylesheet" href="${root}stylesheet.css"/>
+		<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+		</script>
+		<script src="${root}mathjax/es5/tex-mml-chtml.js"></script>
 		<title>${title}</title>
 	</head>
 	<body>

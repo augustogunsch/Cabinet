@@ -2,8 +2,62 @@
 import os
 import re
 import shutil
-import pdfkit
-from markdown2 import markdown
+import subprocess
+from html.parser import HTMLParser
+from pygments import highlight
+from pygments.lexers import get_lexer_by_name
+from pygments.formatters import HtmlFormatter
+
+
+class CodeHighlighter(HTMLParser):
+    data = ''
+    reading_code = False
+    code = ''
+    lang = ''
+
+    def output(self):
+        data = self.data
+        self.data = ''
+        return data
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'pre':
+            self.reading_code = True
+
+        if tag == 'code':
+            for attr in attrs:
+                if attr[0] == 'class':
+                    self.lang = attr[1].split(' ')[1]
+
+        if not self.reading_code:
+            self.attrs = attrs
+            self.data += '<' + tag
+
+            for attr in attrs:
+                self.data += ' %s="%s"' % (attr[0], attr[1])
+
+            self.data += '>'
+
+    def handle_data(self, data):
+        if self.reading_code:
+            self.code += data
+        else:
+            self.data += data
+
+    def handle_endtag(self, tag):
+        if not self.reading_code:
+            self.data += '</%s>' % tag
+
+        if tag == 'pre':
+            self.reading_code = False
+            self.data += highlight(self.code,
+                                   get_lexer_by_name(self.lang),
+                                   HtmlFormatter(linenos=True))
+            self.code = ''
+            self.lang = ''
+
+
+highlighter = CodeHighlighter()
 
 input_ = 'input'
 outroot = 'out'
@@ -13,6 +67,8 @@ templates = 'templates'
 shutil.rmtree(outroot, ignore_errors=True)
 os.mkdir(outroot)
 shutil.copy(templates + '/stylesheet.css', outroot + '/stylesheet.css')
+shutil.copy(templates + '/highlight.css', outroot + '/highlight.css')
+shutil.copytree(templates + '/mathjax', outroot + '/mathjax')
 
 
 with open(templates + '/file.html', 'r') as template:
@@ -32,27 +88,40 @@ def render_template(template, **kwargs):
 class File:
     def __init__(self, root, outdir, name):
         self.outdir = outdir
-        self.basename = name[:-3]
+        self.basename = name[:-4]
         self.pdf = self.basename + '.pdf'
         self.html = self.basename + '.html'
         self.path = self.outdir.removeprefix(outroot + '/') + '/' + self.html
         self.pretty_path = self.path.replace('_', ' ').removesuffix('.html')
+        self.input_path = root + '/' + name
 
         self.root_reference = re.sub(r'.+?/', '../', outdir)
         self.root_reference = re.sub(r'/[^\.]+$', '/', self.root_reference)
 
-        with open(root + '/' + name, 'r') as f:
-            self.content = markdown(f.read())
+        # with open(root + '/' + name, 'r') as f:
+            # markdowner = markdown2.Markdown(extras=['metadata',
+                                                    # 'fenced-code-blocks',
+                                                    # 'tables',
+                                                    # 'code-friendly'])
+
+            # self.content = markdowner.convert(f.read())
+
+        self.content = subprocess.check_output(['pandoc', '-f', 'latex', '-t', 'html',
+                                                '%s/%s' % (root, name)]).decode()
 
     def expand_html(self):
         title = self.basename.replace('_', ' ')
 
-        return render_template(file_template,
-                               title=title,
-                               path=self.pretty_path,
-                               root=self.root_reference,
-                               pdf=self.pdf,
-                               content=self.content)
+        expanded = render_template(file_template,
+                                   title=title,
+                                   path=self.pretty_path,
+                                   root=self.root_reference,
+                                   pdf=self.pdf,
+                                   content=self.content)
+
+        highlighter.feed(expanded)
+
+        return highlighter.output()
 
     def write_html(self):
         html_content = self.expand_html()
@@ -61,18 +130,9 @@ class File:
             f.write(html_content)
 
     def write_pdf(self):
-        content = self.content
+        subprocess.run(['latexmk', '-pdf', '-outdir=%s' % self.outdir, self.input_path])
 
-        # Extra style for PDF
-        content += """
-        <style>
-            body {
-                text-align: justify;
-            }
-        </style>
-        """
-
-        pdfkit.from_string(content, self.outdir + '/' + self.pdf)
+        subprocess.run(['latexmk', '-c', '-outdir=%s' % self.outdir, self.input_path])
 
     def write(self):
         self.write_html()
@@ -90,7 +150,7 @@ for root, dirs, files in os.walk(input_, topdown=True):
 
     if len(files) or len(dirs):
         for file in files:
-            if file.endswith('.md'):
+            if file.endswith('.tex'):
                 f = File(root, outdir, file)
 
                 f.write()

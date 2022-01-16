@@ -50,4 +50,19 @@ main {
 	width: 60%;
 	margin-left: 20%;
 	text-align: justify;
+	position: relative;
+}
+
+.highlight {
+	background-color: #111;
+	padding: .2em .5em;
+	border-radius: 4px;
+}
+
+.highlighttable {
+	width: 100%;
+}
+
+pre {
+	overflow-x: auto;
 }
