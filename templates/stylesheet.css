@@ -32,10 +32,11 @@ a {
 }
 
 .button {
+	text-align: center;
 	padding: .4em;
-	border-radius: 3px;
-	background-color: #fcfeff;
-	color: #112a6f;
+	background-color: #183b9a;
+	color: #fcfeff;
+	width: 100px;
 }
 
 nav {
@@ -45,7 +46,6 @@ nav {
 	width: 100%;
 	display: flex;
 	background-color: #112a6f;
-	padding: 1em;
 }
 
 #path {
