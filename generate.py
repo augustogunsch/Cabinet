@@ -68,6 +68,7 @@ shutil.rmtree(outroot, ignore_errors=True)
 os.mkdir(outroot)
 shutil.copy(templates + '/stylesheet.css', outroot + '/stylesheet.css')
 shutil.copy(templates + '/highlight.css', outroot + '/highlight.css')
+shutil.copy(templates + '/cabinet.png', outroot + '/cabinet.png')
 shutil.copytree(templates + '/mathjax', outroot + '/mathjax')
 
 

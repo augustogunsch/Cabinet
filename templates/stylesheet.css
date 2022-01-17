@@ -1,12 +1,17 @@
 body {
 	background-color: black;
 	color: white;
+	font-family: "Noto Serif", serif;
 	margin: 0;
 }
 
 header {
-	background-color: #232323;
+	background-color: #E89F17;
+	color: black;
 	padding: 1em;
+	box-shadow: 0px 0px 5px 2px #222;
+	z-index: 10;
+	position: relative;
 }
 
 a {
@@ -14,31 +19,37 @@ a {
 	color: #3b7fdd;
 }
 
+#cabinet {
+	margin: 0;
+}
+
+#cabinet-icon {
+	position: relative;
+	top: .1em;
+	margin-right: .2em;
+	display: inline-block;
+	height: 1em;
+}
+
 .button {
 	padding: .4em;
 	border-radius: 3px;
+	background-color: #fcfeff;
+	color: #112a6f;
 }
 
-#pdf {
-	background-color: red;
-	color: white;
-	right: 0;
-	bottom: -.4em;
-	position: absolute;
-}
-
-header div {
-	display: block;
-	position: relative;
-}
-
-#back {
-	background-color: #3b7fdd;
-	color: black;
+nav {
+	box-sizing: border-box;
+	justify-content: space-between;
+	align-items: center;
+	width: 100%;
+	display: flex;
+	background-color: #112a6f;
+	padding: 1em;
 }
 
 #path {
-	margin-left: 1em;
+	color: #fcfeff;
 }
 
 #cabinet {
