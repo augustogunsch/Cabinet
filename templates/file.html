@@ -2,8 +2,11 @@
 <html>
 	<head>
 		<meta charset="utf-8"/>
+		<link rel="stylesheet" href="${root}bootstrap/css/bootstrap.min.css"/>
 		<link rel="stylesheet" href="${root}highlight.css"/>
 		<link rel="stylesheet" href="${root}stylesheet.css"/>
+		<script src="${root}jquery.js"></script>
+		<script src="${root}bootstrap/js/bootstrap.bundle.min.js"></script>
 		<script>
 window.MathJax = {
 	options: {
@@ -16,15 +19,15 @@ window.MathJax = {
 		<title>${title}</title>
 	</head>
 	<body>
-		<header>
+		<header class="container-fluid">
 			<h1 id="cabinet"><img id="cabinet-icon" src="${root}cabinet.png"/>Cabinet</h1>
 		</header>
-		<nav>
+		<nav class="container-fluid">
 			<a class="button" id="back" href="${root}index.html">&larr; Back</a>
 			<span id="path">${path}</span>
 			<a class="button" id="pdf" href="${pdf}">&darr; PDF</a>
 		</nav>
-		<main>
+		<main class="container">
 		${content}
 		</main>
 	</body>

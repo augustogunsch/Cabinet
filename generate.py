@@ -69,7 +69,9 @@ os.mkdir(outroot)
 shutil.copy(templates + '/stylesheet.css', outroot + '/stylesheet.css')
 shutil.copy(templates + '/highlight.css', outroot + '/highlight.css')
 shutil.copy(templates + '/cabinet.png', outroot + '/cabinet.png')
+shutil.copy(templates + '/jquery.js', outroot + '/jquery.js')
 shutil.copytree(templates + '/mathjax', outroot + '/mathjax')
+shutil.copytree(templates + '/bootstrap', outroot + '/bootstrap')
 
 
 with open(templates + '/file.html', 'r') as template:
@@ -98,14 +100,6 @@ class File:
 
         self.root_reference = re.sub(r'.+?/', '../', outdir)
         self.root_reference = re.sub(r'/[^\.]+$', '/', self.root_reference)
-
-        # with open(root + '/' + name, 'r') as f:
-            # markdowner = markdown2.Markdown(extras=['metadata',
-                                                    # 'fenced-code-blocks',
-                                                    # 'tables',
-                                                    # 'code-friendly'])
-
-            # self.content = markdowner.convert(f.read())
 
         self.content = subprocess.check_output(['pandoc', '--mathjax=templates/mathjax/es5/tex-mml-chtml.js', '-f', 'latex', '-t', 'html',
                                                 '%s/%s' % (root, name)]).decode()

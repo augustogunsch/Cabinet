@@ -16,7 +16,10 @@ header {
 
 a {
 	text-decoration: none;
-	color: #3b7fdd;
+}
+
+a:hover {
+	color: white;
 }
 
 #cabinet {
@@ -25,7 +28,7 @@ a {
 
 #cabinet-icon {
 	position: relative;
-	top: .1em;
+	bottom: .1em;
 	margin-right: .2em;
 	display: inline-block;
 	height: 1em;
@@ -39,12 +42,12 @@ a {
 	width: 100px;
 }
 
-nav {
+nav.container-fluid {
 	box-sizing: border-box;
 	justify-content: space-between;
 	align-items: center;
-	width: 100%;
 	display: flex;
+	padding: 0;
 	background-color: #112a6f;
 }
 
@@ -58,8 +61,6 @@ nav {
 
 main {
 	margin: 2em;
-	width: 60%;
-	margin-left: 20%;
 	text-align: justify;
 	position: relative;
 }
