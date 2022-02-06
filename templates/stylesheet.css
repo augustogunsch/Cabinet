@@ -65,6 +65,14 @@ main {
 	position: relative;
 }
 
+.sourceCode pre {
+	margin-bottom: 0;
+}
+
+.sourceCode {
+	margin-bottom: 1rem;
+}
+
 .highlight {
 	background-color: #111;
 	padding: .2em .5em;
