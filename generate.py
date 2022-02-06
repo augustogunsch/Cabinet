@@ -1,4 +1,4 @@
-#!python
+#!/bin/python3.9
 import os
 import re
 import shutil
