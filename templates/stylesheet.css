@@ -73,6 +73,10 @@ main {
 	margin-bottom: 1rem;
 }
 
+.linenos {
+	width: 20px;
+}
+
 .highlight {
 	background-color: #111;
 	padding: .2em .5em;

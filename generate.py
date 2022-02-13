@@ -7,7 +7,11 @@ from html.parser import HTMLParser
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import HtmlFormatter
+import sys
 
+if len(sys.argv) > 1 and 'clean' not in sys.argv:
+    print('usage: %s [clean]' % sys.argv[0])
+    exit(1)
 
 class CodeHighlighter(HTMLParser):
     data = ''
@@ -64,14 +68,19 @@ outroot = 'out'
 output = 'Files'
 templates = 'templates'
 
-shutil.rmtree(outroot, ignore_errors=True)
-os.mkdir(outroot)
-shutil.copy(templates + '/stylesheet.css', outroot + '/stylesheet.css')
-shutil.copy(templates + '/highlight.css', outroot + '/highlight.css')
-shutil.copy(templates + '/cabinet.png', outroot + '/cabinet.png')
-shutil.copy(templates + '/jquery.js', outroot + '/jquery.js')
-shutil.copytree(templates + '/mathjax', outroot + '/mathjax')
-shutil.copytree(templates + '/bootstrap', outroot + '/bootstrap')
+if 'clean' in sys.argv:
+    shutil.rmtree(outroot, ignore_errors=True)
+
+try:
+    os.mkdir(outroot)
+    shutil.copy(templates + '/stylesheet.css', outroot + '/stylesheet.css')
+    shutil.copy(templates + '/highlight.css', outroot + '/highlight.css')
+    shutil.copy(templates + '/cabinet.png', outroot + '/cabinet.png')
+    shutil.copy(templates + '/jquery.js', outroot + '/jquery.js')
+    shutil.copytree(templates + '/mathjax', outroot + '/mathjax')
+    shutil.copytree(templates + '/bootstrap', outroot + '/bootstrap')
+except:
+    pass
 
 
 with open(templates + '/file.html', 'r') as template:
@@ -101,8 +110,44 @@ class File:
         self.root_reference = re.sub(r'.+?/', '../', outdir)
         self.root_reference = re.sub(r'/[^\.]+$', '/', self.root_reference)
 
-        self.content = subprocess.check_output(['pandoc', '--mathjax=templates/mathjax/es5/tex-mml-chtml.js', '-f', 'latex', '-t', 'html',
-                                                '%s/%s' % (root, name)]).decode()
+        path = '%s/%s' % (root, name)
+        with open(path, 'r') as f:
+            content = f.read()
+
+        m = re.findall(r'\\selectlanguage\{(.*?)\}', content)
+        if not m:
+            m = re.findall(r'\\usepackage\[(.*?)\]\{babel\}', content)
+        if not m:
+            m = re.findall(r'\\documentclass\[(.*?)\]\{.*\}', content)
+        lang = m[0] if len(m) > 0 else 'english'
+
+        m = re.findall(r'\\documentclass\{(.*?)\}', content)
+        doc_class = m[0] if len(m) > 0 else 'article'
+
+        options = [
+            'pandoc',
+            '--mathjax=templates/mathjax/es5/tex-mml-chtml.js',
+            '-f', 'latex',
+            '-t', 'html',
+            path
+        ]
+
+        if doc_class == 'bookreport':
+            options.append('-s')
+            options.append('--template')
+            options.append('templates/default.html')
+
+        self.content = subprocess.check_output(options).decode()
+
+        if doc_class == 'bookreport':
+            if lang == 'portuguese':
+                self.content = re.sub(r'!\*\*title\*\*!', 'Título', self.content)
+                self.content = re.sub(r'!\*\*author\*\*!', 'Autor', self.content)
+                self.content = re.sub(r'!\*\*date\*\*!', 'Data da Ficha', self.content)
+            else:
+                self.content = re.sub(r'!\*\*title\*\*!', 'Title', self.content)
+                self.content = re.sub(r'!\*\*author\*\*!', 'Author', self.content)
+                self.content = re.sub(r'!\*\*date\*\*!', 'Report Date', self.content)
 
     def expand_html(self):
         title = self.basename.replace('_', ' ')
@@ -125,13 +170,18 @@ class File:
             f.write(html_content)
 
     def write_pdf(self):
-        subprocess.run(['latexmk', '-pdf', '-outdir=%s' % self.outdir, self.input_path])
+        subprocess.run(['latexmk', '-shell-escape', '-pdf', '-outdir=%s' % self.outdir, self.input_path])
 
         subprocess.run(['latexmk', '-c', '-outdir=%s' % self.outdir, self.input_path])
 
     def write(self):
-        self.write_html()
-        self.write_pdf()
+        html = self.outdir + '/' + self.html
+        pdf = self.outdir + '/' + self.pdf
+        input_time = os.path.getmtime(self.input_path)
+        if not os.path.isfile(html) or input_time > os.path.getmtime(html):
+            self.write_html()
+        if not os.path.isfile(pdf) or input_time > os.path.getmtime(pdf):
+            self.write_pdf()
 
 
 toc = '<ul>'
