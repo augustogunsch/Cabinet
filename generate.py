@@ -304,4 +304,5 @@ copy_static_files()
 outdated_index = write_files()
 
 if outdated_index:
+    print('Generating index')
     make_index()
