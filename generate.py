@@ -1,7 +1,7 @@
 #!/bin/env python3.9
 from subprocess import run
 from datetime import date
-from os import makedirs
+from os import makedirs, environ
 from os.path import relpath
 from re import findall
 from glob import glob
@@ -153,7 +153,7 @@ class HtmlFile(FromTeX):
     def write_output(self):
         args = [
             'pandoc',
-            '--mathjax=templates/mathjax/es5/tex-mml-chtml.js',
+            '--mathjax=static/mathjax/es5/tex-mml-chtml.js',
             '-f', 'latex',
             '-t', 'html',
             '-'
@@ -214,19 +214,27 @@ class PdfFile(FromTeX):
     def write_output(self):
         parent_dir = self.output_file.parent
         makedirs(parent_dir, exist_ok=True)
+
         args = [
             'pdflatex',
             '-jobname', self.output_file.stem,
             '-output-directory', parent_dir,
-            '-shell-escape',
-            '-8bit'
+            '-shell-escape'
         ]
+
+        env = {
+            **environ,
+            'TEXINPUTS': './include:'
+        }
+
         proc = run(args,
+                   env=env,
                    input=bytes(self.tex_file.content, 'utf-8'),
                    capture_output=True)
 
         if proc.returncode != 0:
             print(proc.stdout, file=stderr)
+            print(proc.stderr, file=stderr)
             exit(proc.returncode)
 
 
