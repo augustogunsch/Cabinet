@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<link rel="stylesheet" href="${root}/bootstrap/css/bootstrap.min.css"/>
+		<link rel="stylesheet" href="${root}/highlight.css"/>
+		<link rel="stylesheet" href="${root}/stylesheet.css"/>
+		<script src="${root}/jquery.js"></script>
+		<script src="${root}/bootstrap/js/bootstrap.bundle.min.js"></script>
+		<script>
+window.MathJax = {
+	options: {
+		enableMenu: false,
+		enableEnrichment: false
+	}
+};
+		</script>
+		<script src="${root}/mathjax/es5/tex-mml-chtml.js"></script>
+		<title>${title}</title>
+	</head>
+	<body>
+		<header class="container-fluid">
+			<h1 id="cabinet"><img id="cabinet-icon" src="${root}/cabinet.png"/>Cabinet</h1>
+		</header>
+		<nav class="container-fluid">
+			<a class="button" id="back" href="${root}/index.html">&larr; Back</a>
+			<span id="path">${breadcrumbs}</span>
+			<a class="button" id="pdf" href="${pdf}">&darr; PDF</a>
+		</nav>
+		<main class="container">
+			<table id="meta">
+				<tr>
+					<td>${lang_title}:</td> <td>${title}</td>
+				</tr>
+				<tr>
+					<td>${lang_author}:</td> <td>${author}</td>
+				</tr>
+				<tr>
+					<td>${lang_date}:</td> <td>${date}</td>
+				</tr>
+			</table>
+
+			<hr>
+
+			${body}
+		</main>
+	</body>
+</html>

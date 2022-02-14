@@ -90,3 +90,16 @@ main {
 pre {
 	overflow-x: auto;
 }
+
+#meta {
+	width: 100%;
+	font-size: 1.3em;
+}
+
+#meta td:nth-child(2) {
+	text-align: right;
+}
+
+#toc {
+	margin-top: 2em;
+}

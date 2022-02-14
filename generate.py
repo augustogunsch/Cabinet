@@ -1,17 +1,45 @@
-#!/bin/python3.9
-import os
-import re
-import shutil
-import subprocess
+#!/bin/env python3.9
+from subprocess import run
+from datetime import date
+from os import makedirs
+from os.path import relpath
+from re import findall
+from glob import glob
+from pathlib import Path
+from sys import argv, stderr
+from shutil import copy, copytree, rmtree
 from html.parser import HTMLParser
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import HtmlFormatter
-import sys
 
-if len(sys.argv) > 1 and 'clean' not in sys.argv:
-    print('usage: %s [clean]' % sys.argv[0])
+base_author = 'Augusto Gunsch'
+
+input_root = Path('input')
+output_root = Path('output')
+file_output_root = output_root / Path('files')
+templates_root = Path('templates')
+static_root = Path('static')
+
+if len(argv) > 1 and 'clean' not in argv:
+    print('usage: {} [clean]'.format(argv[0]), file=stderr)
     exit(1)
+
+if 'clean' in argv:
+    print('Cleaning output root')
+    rmtree(output_root, ignore_errors=True)
+
+templates = {}
+for template in templates_root.glob('*.html'):
+    templates[template.stem] = template.read_text()
+
+
+def render_template(template, **kwargs):
+    for var, val in kwargs.items():
+        template = template.replace('${%s}' % var, str(val))
+
+    return template
+
 
 class CodeHighlighter(HTMLParser):
     data = ''
@@ -63,148 +91,217 @@ class CodeHighlighter(HTMLParser):
 
 highlighter = CodeHighlighter()
 
-input_ = 'input'
-outroot = 'out'
-output = 'Files'
-templates = 'templates'
 
-if 'clean' in sys.argv:
-    shutil.rmtree(outroot, ignore_errors=True)
+class TeXFile:
+    def extract_tex_metadata(self):
+        m = findall(r'\\usepackage\[(.*)\]\{babel\}', self.raw_content)
+        self.lang = m[0] if m else 'english'
 
-try:
-    os.mkdir(outroot)
-    shutil.copy(templates + '/stylesheet.css', outroot + '/stylesheet.css')
-    shutil.copy(templates + '/highlight.css', outroot + '/highlight.css')
-    shutil.copy(templates + '/cabinet.png', outroot + '/cabinet.png')
-    shutil.copy(templates + '/jquery.js', outroot + '/jquery.js')
-    shutil.copytree(templates + '/mathjax', outroot + '/mathjax')
-    shutil.copytree(templates + '/bootstrap', outroot + '/bootstrap')
-except:
-    pass
+        m = findall(r'\\title\{(.*)\}', self.raw_content)
+        self.title = m[0] if m else self.input_file.stem.replace('_', ' ')
+
+        m = findall(r'\\author\{(.*)\}', self.raw_content)
+        self.author = m[0] if m else base_author
+
+        m = findall(r'\\date\{(.*)\}', self.raw_content)
+        self.date = m[0] if m else date.today().strftime('%d/%m/%Y')
+
+        m = findall(r'\\documentclass\{(.*)\}', self.raw_content)
+        self.document_class = m[0] if m else 'article'
+
+    def expand_macros(self):
+        content = self.raw_content
+        breadcrumbs = str(self.pretty_breadcrumbs).replace('>',
+                                                          r'\textgreater\hspace{1pt}')
+        content = content.replace(r'\breadcrumbs', breadcrumbs)
+        outdir = (file_output_root/self.breadcrumbs).parent
+        content = content.replace(r'\outdir', str(outdir))
+        self.content = content
+
+    def __init__(self, input_file):
+        self.input_file = input_file
+
+        self.breadcrumbs = Path(*input_file.parts[len(input_root.parts):]).with_suffix('')
+        self.pretty_breadcrumbs = str(self.breadcrumbs) \
+                                     .replace('_', ' ') \
+                                     .replace('/', ' > ')
+
+        with open(input_file, 'r') as f:
+            self.raw_content = f.read()
+
+        self.mtime = input_file.stat().st_mtime
+        self.extract_tex_metadata()
+
+        self.expand_macros()
 
 
-with open(templates + '/file.html', 'r') as template:
-    file_template = template.read()
+class FromTeX:
+    def __init__(self, tex_file, ext):
+        self.tex_file = tex_file
 
-with open(templates + '/index.html', 'r') as template:
-    index_template = template.read()
+        self.output_file = file_output_root / self.tex_file.breadcrumbs.with_suffix(ext)
 
-
-def render_template(template, **kwargs):
-    for var, val in kwargs.items():
-        template = template.replace('${%s}' % var, val)
-
-    return template
+        self.mtime = self.output_file.stat().st_mtime \
+                     if self.output_file.exists() else 0
+        self.is_outdated = self.mtime < self.tex_file.mtime
 
 
-class File:
-    def __init__(self, root, outdir, name):
-        self.outdir = outdir
-        self.basename = name[:-4]
-        self.pdf = self.basename + '.pdf'
-        self.html = self.basename + '.html'
-        self.path = self.outdir.removeprefix(outroot + '/') + '/' + self.html
-        self.pretty_path = self.path.replace('_', ' ').removesuffix('.html')
-        self.input_path = root + '/' + name
+class HtmlFile(FromTeX):
+    def __init__(self, tex_file):
+        super().__init__(tex_file, '.html')
 
-        self.root_reference = re.sub(r'.+?/', '../', outdir)
-        self.root_reference = re.sub(r'/[^\.]+$', '/', self.root_reference)
-
-        path = '%s/%s' % (root, name)
-        with open(path, 'r') as f:
-            content = f.read()
-
-        m = re.findall(r'\\selectlanguage\{(.*?)\}', content)
-        if not m:
-            m = re.findall(r'\\usepackage\[(.*?)\]\{babel\}', content)
-        if not m:
-            m = re.findall(r'\\documentclass\[(.*?)\]\{.*\}', content)
-        lang = m[0] if len(m) > 0 else 'english'
-
-        m = re.findall(r'\\documentclass\{(.*?)\}', content)
-        doc_class = m[0] if len(m) > 0 else 'article'
-
-        options = [
+    def write_output(self):
+        args = [
             'pandoc',
             '--mathjax=templates/mathjax/es5/tex-mml-chtml.js',
             '-f', 'latex',
             '-t', 'html',
-            path
+            '-'
         ]
+        proc = run(args,
+                   input=self.tex_file.content,
+                   encoding='utf-8',
+                   capture_output=True)
 
-        if doc_class == 'bookreport':
-            options.append('-s')
-            options.append('--template')
-            options.append('templates/default.html')
+        if proc.returncode != 0:
+            print(proc.stderr, file=stderr)
+            exit(proc.returncode)
 
-        self.content = subprocess.check_output(options).decode()
+        body = proc.stdout
 
-        if doc_class == 'bookreport':
-            if lang == 'portuguese':
-                self.content = re.sub(r'!\*\*title\*\*!', 'Título', self.content)
-                self.content = re.sub(r'!\*\*author\*\*!', 'Autor', self.content)
-                self.content = re.sub(r'!\*\*date\*\*!', 'Data da Ficha', self.content)
+        try:
+            template = templates[self.tex_file.document_class]
+        except:
+            print('No template named "{}.html"'.format(self.tex_file.document_class),
+                  file=stderr)
+            exit(2)
+
+        root = Path(relpath(output_root, start=self.output_file)).parent
+
+        if self.tex_file.lang == 'portuguese':
+            lang_title = 'Título'
+            lang_author = 'Autor'
+            lang_date = 'Data da Ficha'
+        else:
+            lang_title = 'Title'
+            lang_author = 'Author'
+            lang_date = 'Report Date'
+
+        content = render_template(template,
+                                  lang_title=lang_title,
+                                  lang_author=lang_author,
+                                  lang_date=lang_date,
+                                  title=self.tex_file.title,
+                                  date=self.tex_file.date,
+                                  author=self.tex_file.author,
+                                  breadcrumbs=self.tex_file.pretty_breadcrumbs,
+                                  pdf=self.output_file.with_suffix('.pdf').name,
+                                  root=root,
+                                  body=body)
+
+        highlighter.feed(content)
+        content = highlighter.output()
+
+        makedirs(self.output_file.parent, exist_ok=True)
+        with open(self.output_file, 'w') as f:
+            f.write(content)
+
+
+class PdfFile(FromTeX):
+    def __init__(self, tex_file):
+        super().__init__(tex_file, '.pdf')
+
+    def write_output(self):
+        parent_dir = self.output_file.parent
+        makedirs(parent_dir, exist_ok=True)
+        args = [
+            'pdflatex',
+            '-jobname', self.output_file.stem,
+            '-output-directory', parent_dir,
+            '-shell-escape',
+            '-8bit'
+        ]
+        proc = run(args,
+                   input=bytes(self.tex_file.content, 'utf-8'),
+                   capture_output=True)
+
+        if proc.returncode != 0:
+            print(proc.stdout, file=stderr)
+            exit(proc.returncode)
+
+
+def write_files():
+    changed = False
+
+    for input_file in input_root.glob('**/*.tex'):
+        tex_file = TeXFile(input_file)
+
+        html_file = HtmlFile(tex_file)
+        pdf_file = PdfFile(tex_file)
+
+        if html_file.is_outdated:
+            print('Generating "{}"'.format(html_file.output_file))
+            html_file.write_output()
+            changed = True
+
+        if pdf_file.is_outdated:
+            print('Generating "{}"'.format(pdf_file.output_file))
+            pdf_file.write_output()
+            changed = True
+
+    return changed
+
+def copy_static_files():
+    if not output_root.exists():
+        makedirs(output_root)
+
+    for entity in static_root.iterdir():
+        dest = output_root/Path(*entity.parts[len(static_root.parts):])
+        if not dest.exists():
+            print('Copying "{}" to "{}"'.format(entity, dest))
+            if entity.is_dir():
+                copytree(entity, dest)
             else:
-                self.content = re.sub(r'!\*\*title\*\*!', 'Title', self.content)
-                self.content = re.sub(r'!\*\*author\*\*!', 'Author', self.content)
-                self.content = re.sub(r'!\*\*date\*\*!', 'Report Date', self.content)
+                copy(entity, dest)
 
-    def expand_html(self):
-        title = self.basename.replace('_', ' ')
+def make_details(directory):
+    html = ''
 
-        expanded = render_template(file_template,
-                                   title=title,
-                                   path=self.pretty_path,
-                                   root=self.root_reference,
-                                   pdf=self.pdf,
-                                   content=self.content)
+    if directory != input_root:
+        html += '<details open>'
+        html += '<summary>{}</summary>'.format(directory.name.replace('_', ' '))
 
-        highlighter.feed(expanded)
+    html += '<ul>'
+    for file in directory.iterdir():
+        if file.is_file():
+            if file.suffix == '.tex':
+                outfile = Path(*file.resolve().parts[len(input_root.resolve().parts):])
+                outfile = ('files'/outfile).with_suffix('.html')
 
-        return highlighter.output()
+                html += '<li><a href="{}">{}</a></li>'.format(outfile,
+                                                              file.stem.replace('_', ' '))
+        else:
+            html += make_details(file)
+    html += '</ul>'
 
-    def write_html(self):
-        html_content = self.expand_html()
+    if directory != input_root:
+        html += '</details>'
 
-        with open(self.outdir + '/' + self.html, 'w') as f:
-            f.write(html_content)
+    return html
 
-    def write_pdf(self):
-        subprocess.run(['latexmk', '-shell-escape', '-pdf', '-outdir=%s' % self.outdir, self.input_path])
+def make_index():
+    html = '<ul id="toc">'
+    html += make_details(input_root)
+    html += '</ul>'
 
-        subprocess.run(['latexmk', '-c', '-outdir=%s' % self.outdir, self.input_path])
+    index = render_template(templates['index'],
+                            toc=html)
 
-    def write(self):
-        html = self.outdir + '/' + self.html
-        pdf = self.outdir + '/' + self.pdf
-        input_time = os.path.getmtime(self.input_path)
-        if not os.path.isfile(html) or input_time > os.path.getmtime(html):
-            self.write_html()
-        if not os.path.isfile(pdf) or input_time > os.path.getmtime(pdf):
-            self.write_pdf()
+    with open(output_root / 'index.html', 'w') as f:
+        f.write(index)
 
+copy_static_files()
+outdated_index = write_files()
 
-toc = '<ul>'
-
-for root, dirs, files in os.walk(input_, topdown=True):
-    outdir = outroot + '/' + output + root[len(input_):]
-
-    os.makedirs(outdir, exist_ok=True)
-
-    outfiles = []
-
-    if len(files) or len(dirs):
-        for file in files:
-            if file.endswith('.tex'):
-                f = File(root, outdir, file)
-
-                f.write()
-
-                toc += '<li><a href="%s">%s</a></li>' % (f.path, f.pretty_path)
-
-toc += '</ul>'
-
-
-with open(outroot + '/index.html', 'w') as f:
-    f.write(render_template(index_template,
-                            toc=toc))
+if outdated_index:
+    make_index()
