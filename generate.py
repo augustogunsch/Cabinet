@@ -109,6 +109,9 @@ class TeXFile:
         m = findall(r'\\documentclass\{(.*)\}', self.raw_content)
         self.document_class = m[0] if m else 'article'
 
+        m = findall(r'\\usepackage(\[.*\])?\{biblatex\}', self.raw_content)
+        self.biblatex = bool(m)
+
     def expand_macros(self):
         content = self.raw_content
         breadcrumbs = str(self.pretty_breadcrumbs).replace('>',
@@ -211,14 +214,11 @@ class PdfFile(FromTeX):
     def __init__(self, tex_file):
         super().__init__(tex_file, '.pdf')
 
-    def write_output(self):
-        parent_dir = self.output_file.parent
-        makedirs(parent_dir, exist_ok=True)
-
+    def run_pdflatex(self):
         args = [
             'pdflatex',
             '-jobname', self.output_file.stem,
-            '-output-directory', parent_dir,
+            '-output-directory', self.output_file.parent,
             '-shell-escape'
         ]
 
@@ -236,6 +236,29 @@ class PdfFile(FromTeX):
             print(proc.stdout, file=stderr)
             print(proc.stderr, file=stderr)
             exit(proc.returncode)
+
+    def run_biber(self):
+        args = [
+            'biber',
+            self.output_file.with_suffix('')
+        ]
+
+        proc = run(args,
+                   capture_output=True)
+
+        if proc.returncode != 0:
+            print(proc.stdout, file=stderr)
+            print(proc.stderr, file=stderr)
+            exit(proc.returncode)
+
+    def write_output(self):
+        makedirs(self.output_file.parent, exist_ok=True)
+
+        self.run_pdflatex()
+
+        if self.tex_file.biblatex:
+            self.run_biber()
+            self.run_pdflatex()
 
 
 def write_files():
