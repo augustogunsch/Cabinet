@@ -216,7 +216,7 @@ class PdfFile(FromTeX):
 
     def run_pdflatex(self):
         args = [
-            'pdflatex',
+            'xelatex',
             '-jobname', self.output_file.stem,
             '-output-directory', self.output_file.parent,
             '-shell-escape'

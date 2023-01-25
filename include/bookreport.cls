@@ -12,13 +12,21 @@
 		Título: \hfill \@title\\
 		Autor: \hfill \@author\\
 		Data da Ficha: \hfill \@date\\
-		\rule{\textwidth}{0.4pt}
+	}
+	{
+	\IfLanguageName{polish}
+	{
+		\noindent\large
+		Tytuł: \hfill \@title\\
+		Autor: \hfill \@author\\
+		Data Reportu: \hfill \@date\\
 	}
 	{
 		\noindent\large
 		Title: \hfill \@title\\
 		Author: \hfill \@author\\
 		Report Date: \hfill \@date\\
-		\rule{\textwidth}{0.4pt}
 	}
+	}
+	\rule{\textwidth}{0.4pt}
 }
